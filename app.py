@@ -1,4 +1,3 @@
-# app.py
 import os
 import streamlit as st
 import pandas as pd
@@ -25,7 +24,7 @@ if not ALPHA_VANTAGE_API_KEY:
 # -----------------------------
 @st.cache_data
 def get_sentiment(text: str) -> float:
-    """Returns sentiment score scaled 0-1. Uses TextBlob."""
+    """Returns sentiment score scaled 0-1 using TextBlob."""
     if not isinstance(text, str) or text.strip() == "":
         return 0.5
     tb = TextBlob(text)
@@ -33,7 +32,7 @@ def get_sentiment(text: str) -> float:
     return (polarity + 1) / 2  # scale 0-1
 
 # -----------------------------
-# Utility: get stock + news
+# Stock + News Analysis
 # -----------------------------
 def analyze_stock(ticker_symbol: str):
     try:
@@ -94,14 +93,14 @@ def analyze_stock(ticker_symbol: str):
         merged["Predicted_Close"] = np.nan
         merged.loc[merged.index[-1], "Predicted_Close"] = pred_last
 
-        # Suggestion
+        # Suggestion (realistic)
         last_row = merged.iloc[-1]
-        diff = last_row["Predicted_Close"] - last_row["4. close"]
-        threshold = last_row["4. close"]*0.01
-        sentiment_score = last_row["average_sentiment_score"]
-        if diff > threshold and sentiment_score > 0.6:
+        diff_pct = (last_row["Predicted_Close"] - last_row["4. close"]) / last_row["4. close"]
+        sentiment = last_row["average_sentiment_score"]
+
+        if diff_pct > 0.005 or sentiment > 0.55:
             suggestion = "BUY"
-        elif diff < -threshold and sentiment_score < 0.4:
+        elif diff_pct < -0.005 or sentiment < 0.45:
             suggestion = "SELL"
         else:
             suggestion = "HOLD"
@@ -127,7 +126,7 @@ if st.sidebar.button("Analyze"):
     else:
         st.subheader(f"Investment Suggestion: {suggestion}")
 
-        # Plot close & prediction
+        # Plot Close & Prediction
         fig, ax = plt.subplots(figsize=(12,6))
         ax.plot(data["date"], data["4. close"], label="Actual Close")
         if data["Predicted_Close"].notnull().any():
