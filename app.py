@@ -18,7 +18,7 @@ st.set_page_config(page_title="Stock Market Predictor", layout="wide")
 # Configuration / Keys
 # ---------------------
 # Use Streamlit secrets or environment variables in production:
-ALPHA_VANTAGE_API_KEY = st.secrets.get("QE02OEX4QRX0NYAK") or os.getenv("QE02OEX4QRX0NYAK")
+ALPHA_VANTAGE_API_KEY = st.secrets.get("YOUR_ALPHA_VANTAGE_KEY") or os.getenv("YOUR_ALPHA_VANTAGE_KEY")
 
 # GNews used here does not require an API key. (If you use other news APIs, store their keys similarly.)
 # Example: put ALPHA_VANTAGE_API_KEY in Streamlit secrets or set env var before running:
