@@ -39,6 +39,25 @@ def get_sentiment(text):
         print(f"Error in sentiment analysis: {e}")
         return None
 
+def generate_investment_suggestion(actual_close, predicted_close, sentiment_score):
+    """Generates an investment suggestion based on price prediction and sentiment."""
+    price_difference = predicted_close - actual_close
+    price_threshold = actual_close * 0.01 # Define a 1% threshold for "significant" price difference
+
+    # Define sentiment thresholds (adjust as needed)
+    positive_sentiment_threshold = 0.6
+    negative_sentiment_threshold = 0.4
+
+    if price_difference > price_threshold and sentiment_score > positive_sentiment_threshold:
+        return "BUY"
+    elif abs(price_difference) <= price_threshold and (sentiment_score >= negative_sentiment_threshold and sentiment_score <= positive_sentiment_threshold):
+        return "HOLD"
+    elif price_difference < -price_threshold and sentiment_score < negative_sentiment_threshold:
+        return "SELL"
+    else:
+        return "HOLD" # Default to HOLD for other cases
+
+
 # Function to analyze stock data and news
 def analyze_stock(ticker_symbol):
     if not alpha_vantage_api_key or not gnews_api_key:
@@ -122,10 +141,10 @@ def analyze_stock(ticker_symbol):
 
             if merged_data.empty:
                 st.error("Not enough data to generate features after calculating moving averages. Please try a different ticker or date range.")
-                return None
+                return None, None # Return None for both data and suggestion
         except Exception as e:
             st.error(f"Error during feature engineering for {ticker_symbol}: {e}")
-            return None
+            return None, None # Return None for both data and suggestion
 
 
         # Model Training and Prediction (Simplified for demonstration - retrain on available data)
@@ -138,7 +157,7 @@ def analyze_stock(ticker_symbol):
             if not all(feature in merged_data.columns for feature in features):
                 missing_features = [feature for feature in features if feature not in merged_data.columns]
                 st.error(f"Missing required features for model training: {missing_features}")
-                return None
+                return None, None # Return None for both data and suggestion
 
 
             X = merged_data[features]
@@ -153,16 +172,32 @@ def analyze_stock(ticker_symbol):
 
             # Store these predictions in a new column
             merged_data['Predicted_Close'] = predictions
+
+            # Generate investment suggestion
+            if not merged_data.empty:
+                latest_data = merged_data.iloc[-1]
+                latest_actual_close = latest_data['4. close']
+                latest_predicted_close = latest_data['Predicted_Close']
+                latest_sentiment_score = latest_data['average_sentiment_score']
+                investment_suggestion = generate_investment_suggestion(
+                    latest_actual_close,
+                    latest_predicted_close,
+                    latest_sentiment_score
+                )
+            else:
+                 investment_suggestion = "HOLD (Insufficient data)"
+
+
         except Exception as e:
             st.error(f"Error during model training or prediction for {ticker_symbol}: {e}")
-            return None
+            return None, None # Return None for both data and suggestion
 
 
-        return merged_data
+        return merged_data, investment_suggestion
 
     except Exception as e:
         st.error(f"An unexpected error occurred during data analysis for {ticker_symbol}: {e}")
-        return None
+        return None, None # Return None for both data and suggestion
 
 
 st.title('Stock Market Predictor Dashboard')
@@ -178,10 +213,13 @@ ticker_symbol = st.sidebar.text_input('Enter Stock Ticker Symbol (e.g., AAPL)', 
 
 # Perform analysis and get data when ticker symbol is entered
 if ticker_symbol:
-    stock_analysis_data = analyze_stock(ticker_symbol)
+    stock_analysis_data, investment_suggestion = analyze_stock(ticker_symbol)
 
     if stock_analysis_data is not None and not stock_analysis_data.empty:
         st.subheader(f'Analysis for {ticker_symbol}')
+
+        # Display Investment Suggestion
+        st.subheader(f'Investment Suggestion: {investment_suggestion}')
 
         # Plot Historical Close Price and Predictions
         fig1, ax1 = plt.subplots(figsize=(12, 6))
@@ -221,9 +259,7 @@ if ticker_symbol:
 
     elif stock_analysis_data is not None and stock_analysis_data.empty:
          st.warning(f"The analysis for ticker '{ticker_symbol}' resulted in an empty dataset after processing. This could be due to insufficient data for feature engineering. Please try a different ticker or date range.")
-    else:
-        # This case is handled by the error messages within analyze_stock
-        pass
+    # Error handling for None return from analyze_stock is implicitly handled by the 'if stock_analysis_data is not None' check.
 
 
 st.sidebar.markdown("Dashboard created as part of a stock market predictor project.")
