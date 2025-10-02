@@ -1,0 +1,10 @@
+streamlit
+pandas
+matplotlib
+seaborn
+alpha_vantage
+gnews
+transformers
+scikit-learn
+numpy
+requests
